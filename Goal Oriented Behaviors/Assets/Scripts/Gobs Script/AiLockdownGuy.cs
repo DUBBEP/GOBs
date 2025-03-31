@@ -6,21 +6,24 @@ public class AiLockdownGuy : MonoBehaviour
     Goal[] myGoals;
 
     [SerializeField]
-    private float averageTimeBetweenTicks;
+    private float discontentRefereshTime;
+    [SerializeField]
+    private float actionRefreshTime;
     [SerializeField]
     private float discontentmentThreshold;
 
-    private float tickTime;
-    private float timer = 0;
+    private float discontentTickTime;
+    private float actionTickTime;
+    private float discontentTimer;
+    private float actionTimer;
 
-    private float discontent;
-
-    bool midpointCheckFlag = false;
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        tickTime = averageTimeBetweenTicks;
+        discontentTickTime = discontentRefereshTime;
+        actionTickTime = actionRefreshTime;
+
+        discontentTimer = discontentTickTime;
+        actionTimer = actionTickTime;
 
 
         myGoals = new Goal[] { new Eat(), new Bored(), new Bathroom() };
@@ -32,61 +35,71 @@ public class AiLockdownGuy : MonoBehaviour
         RandomizeGoalValues();
         UI.instance.UpdateGoals(myGoals);
         CheckDiscontent();
-        midpointCheckFlag = true;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        timer += Time.deltaTime;
-        UI.instance.UpdateTimer((int)timer);
+        discontentTimer -= Time.deltaTime;
+        actionTimer -= Time.deltaTime;
 
-        if (timer > tickTime / 2 && midpointCheckFlag)
+        UI.instance.UpdateTimers((int)discontentTimer, (int)actionTimer);
+        CheckDiscontentTimer();
+        CheckActionTimer();
+    }
+
+    // check if we want to perform an action.
+    private void CheckActionTimer()
+    {
+        if (actionTimer < 0)
         {
-            midpointCheckFlag = false;
-            Debug.Log("Midpoint check Discontent");
-            CheckDiscontent();
-            if (discontent > discontentmentThreshold)
-            {
+            if (CheckDiscontent())
                 DoSomething();
-            }
+            else
+                UI.instance.UpdateActionLabel("do nothing.");
+
+            actionTickTime = Mathf.Max(6, Random.Range(-3, 4) + actionRefreshTime);
+            actionTimer = actionTickTime;
         }
 
-        if (timer > tickTime)
+    }
+
+    // increase our discontent if the timer has passed the tick value
+    private void CheckDiscontentTimer()
+    {
+        if (discontentTimer < 0)
         {
-            Debug.Log("Updating Goals");
             foreach (Goal goal in myGoals)
             {
                 goal.value = goal.value + goal.getChange();
-
                 goal.value = Mathf.Min(goal.value, 5f);
-
             }
-
             UI.instance.UpdateGoals(myGoals);
             CheckDiscontent();
-            
-            if (discontent > discontentmentThreshold)
-            {
-                DoSomething();
-            }
 
-            tickTime = Mathf.Max(6, Random.Range(-5f, 4f) + averageTimeBetweenTicks);
-            timer = 0;
-            midpointCheckFlag = true;
+            discontentTickTime = Mathf.Max(6, Random.Range(-5, 5) + discontentRefereshTime);
+            discontentTimer = discontentTickTime;
         }
     }
 
-    private void CheckDiscontent()
+
+    // returns true if discontent is greater than discontent threshold. Also updates discontent UI.
+    private bool CheckDiscontent()
     {
-        discontent = 0;
+        float discontent = 0;
         foreach(Goal goal in myGoals)
         {
             discontent += goal.GetDiscontentment(goal.value);
         }
+        
         UI.instance.UpdateDiscontentLabel(discontent);
+
+        if (discontent > discontentmentThreshold)
+            return true;
+
+        return false;
     }
 
+    // Picks the best action to take and updates goal values.
     private void DoSomething()
     {
         Action action = GOBs.ChooseAction(myActions, myGoals);
@@ -96,11 +109,9 @@ public class AiLockdownGuy : MonoBehaviour
             goal.value = goal.value + action.GetGoalChange(goal);
         }
 
-
-        StartCoroutine(UI.instance.UpdateActionLabel(action.GetActionMessage()));
+        UI.instance.UpdateActionLabel(action.GetActionMessage());
         UI.instance.UpdateGoals(myGoals);
         CheckDiscontent();
-
     }
 
     void RandomizeGoalValues()

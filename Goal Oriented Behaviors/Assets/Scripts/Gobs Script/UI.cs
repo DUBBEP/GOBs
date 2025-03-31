@@ -5,7 +5,10 @@ using System.Collections;
 public class UI : MonoBehaviour
 {
     [SerializeField]
-    private TextMeshProUGUI timer;
+    private TextMeshProUGUI discontentTimer;
+
+    [SerializeField]
+    private TextMeshProUGUI actionTimer;
 
     [SerializeField]
     private TextMeshProUGUI actionLabel;
@@ -22,9 +25,10 @@ public class UI : MonoBehaviour
     {
         instance = this;
     }
-    public void UpdateTimer(float time)
+    public void UpdateTimers(float discontentTime, float actionTime)
     {
-        timer.text = "Time: " + time;
+        discontentTimer.text = "Disctontent Timer: " + discontentTime;
+        actionTimer.text = "Action Timer: " + actionTime;
     }
 
     public void UpdateGoals(Goal[] goals)
@@ -55,10 +59,9 @@ public class UI : MonoBehaviour
         discontentLabel.text = "Discontent: " + value.ToString();
     }
 
-    public IEnumerator UpdateActionLabel(string ActionName)
+    public void UpdateActionLabel(string ActionName)
     {
         actionLabel.text = "The AI has decided to " + ActionName;
-        yield return new WaitForSeconds(3f);
     }
 }
 
